@@ -379,6 +379,12 @@ function start(data) {
   requestAnimationFrame(frame);
 }
 
+// Сенсорные кнопки: включаем на любом устройстве с касанием, а не только по (pointer: coarse),
+// который встроенные браузеры приложений иногда не сообщают.
+function enableTouch() { document.body.classList.add('touch'); }
+if (matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0 || 'ontouchstart' in window) enableTouch();
+window.addEventListener('touchstart', enableTouch, { once: true, passive: true });
+
 matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', readTheme);
 new MutationObserver(readTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class', 'style'] });
 

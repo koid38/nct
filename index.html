@@ -195,7 +195,8 @@ tr.me .dot { box-shadow: 0 0 0 1.5px var(--on-hi); }
 .keys { margin: 0; color: var(--ink-soft); font-size: 13px; max-width: 80ch; }
 kbd { font: 500 12px var(--font-ui); border: 1.5px solid var(--ink-soft); border-bottom-width: 3px; border-radius: 5px; padding: 0 5px; color: var(--ink); background: var(--card); }
 .pad { display: none; justify-content: space-between; align-items: end; gap: 12px; user-select: none; -webkit-user-select: none; }
-.pad-group { display: flex; gap: 10px; }
+.pad-group { display: grid; grid-template-columns: repeat(2, auto); gap: 10px; }
+.pad-group [data-act="jump"] { order: -1; grid-column: 1 / -1; justify-self: center; }
 .pad-acts { display: grid; grid-template-columns: repeat(2, auto); gap: 10px; }
 .pad button {
   width: 64px; height: 64px; border-radius: 50%; border: 2.5px solid var(--ink); background: var(--card);
@@ -206,20 +207,26 @@ kbd { font: 500 12px var(--font-ui); border: 1.5px solid var(--ink-soft); border
 .pad button.down { transform: scale(0.92); background: var(--ink); color: var(--paper); }
 .rotate-hint { display: none; margin: 0; color: var(--ink-soft); font-size: 13px; }
 
+/* Класс .touch ставит скрипт: по медиазапросу, по числу точек касания или по первому касанию. */
+body.touch .pad { display: flex; }
+body.touch.fighting .top { display: none; }
 @media (pointer: coarse) {
-  .pad { display: flex; }
   .keys { display: none; }
-  body.fighting .top { display: none; }
 }
-@media (pointer: coarse) and (orientation: portrait) {
-  .rotate-hint { display: block; }
+@media (orientation: portrait) {
+  body.touch .rotate-hint { display: block; }
 }
-@media (pointer: coarse) and (orientation: landscape) {
-  body.fighting .sheet { padding-block: 6px; }
-  .fight-stage { position: relative; }
-  .arena-wrap { width: min(100%, calc((100dvh - 64px) * 16 / 9)); }
-  .pad { position: absolute; left: 0; right: 0; bottom: 6px; padding-inline: 6px; pointer-events: none; }
-  .pad button { pointer-events: auto; opacity: 0.78; width: 56px; height: 56px; }
+/* Телефон лёжа: стрелки слева от арены, удары справа, ничего не закрывает бойцов. */
+@media (orientation: landscape) and (max-height: 560px) {
+  body.touch.fighting .sheet { padding-block: 6px; gap: 6px; max-width: none; }
+  body.touch .fight-stage { grid-template-columns: auto minmax(0, 1fr) auto; align-items: end; gap: 10px; }
+  body.touch .pad { display: contents; }
+  body.touch .pad-group { grid-column: 1; grid-row: 1; }
+  body.touch .pad-acts { grid-column: 3; grid-row: 1; }
+  body.touch .arena-wrap { grid-column: 2; grid-row: 1; width: min(100%, calc((100dvh - 76px) * 16 / 9)); }
+  body.touch .pad button { width: 56px; height: 56px; }
+  body.touch .fight-bar { justify-content: center; }
+  body.touch .fight-bar .btn { font-size: 20px; padding: 4px 18px; }
 }
 @media (max-width: 520px) {
   .col-power { display: none; }
