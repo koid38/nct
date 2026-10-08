@@ -1,0 +1,340 @@
+<title>Бой в клетку</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Rubik:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* Раскладка: страница школьной тетради в клетку с красным полем; арена нарисована на том же листе. В тёмной теме — мел на доске. */
+:root {
+  --paper: #f5f8fc;
+  --grid: #d3dfec;
+  --ink: #22336e;
+  --ink-soft: #5a6787;
+  --margin: #d4524c;
+  --hi: #ffe35a;
+  --on-hi: #22336e;
+  --card: #ffffff;
+  --veil: rgba(245, 248, 252, 0.82);
+  --fig-l: 40%;
+  --fig-s: 72%;
+  --font-hand: "Caveat", "Segoe Print", "Comic Sans MS", cursive;
+  --font-ui: "Rubik", "Segoe UI", system-ui, sans-serif;
+  --wobbly: 255px 15px 225px 15px / 15px 225px 15px 255px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #1c2924; --grid: #283a33; --ink: #edf2e8; --ink-soft: #a1b4a8; --margin: #ee8b7f;
+    --hi: #f1d45a; --on-hi: #1c2924; --card: #23332d; --veil: rgba(28, 41, 36, 0.82);
+    --fig-l: 72%; --fig-s: 66%; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #1c2924; --grid: #283a33; --ink: #edf2e8; --ink-soft: #a1b4a8; --margin: #ee8b7f;
+  --hi: #f1d45a; --on-hi: #1c2924; --card: #23332d; --veil: rgba(28, 41, 36, 0.82);
+  --fig-l: 72%; --fig-s: 66%; color-scheme: dark;
+}
+
+[hidden] { display: none !important; }
+html, body { min-height: 100%; }
+body {
+  background-color: var(--paper);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 15px;
+  line-height: 1.45;
+}
+.sheet {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding-inline: 16px;
+  padding-block: 20px 48px;
+  display: grid;
+  gap: 20px;
+}
+.top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 18px; border-bottom: 2px solid var(--margin); padding-bottom: 6px; }
+.top h1 { font-family: var(--font-hand); font-size: 56px; line-height: 1; margin: 0; font-weight: 700; }
+.top p { margin: 0; color: var(--ink-soft); max-width: 60ch; }
+
+h2, h3 { text-wrap: balance; }
+.hand { font-family: var(--font-hand); }
+
+.btn {
+  font-family: var(--font-hand);
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.1;
+  padding: 8px 26px;
+  border: 2.5px solid var(--ink);
+  border-radius: var(--wobbly);
+  background: var(--card);
+  color: var(--ink);
+  cursor: pointer;
+  transition: transform 0.12s ease;
+}
+.btn:hover { transform: rotate(-1.5deg) scale(1.03); }
+.btn-main { background: var(--hi); color: var(--on-hi); }
+.btn-link { background: none; border: 0; color: var(--ink-soft); text-decoration: underline; cursor: pointer; font: inherit; padding: 4px 0; }
+button:focus-visible, input:focus-visible { outline: 3px dashed var(--margin); outline-offset: 3px; }
+
+/* ——— Создание бойца ——— */
+.create { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 32px; align-items: start; }
+.create-preview {
+  position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px);
+  background: var(--card); border: 2.5px solid var(--ink); border-radius: var(--wobbly);
+  padding: 14px; display: grid; gap: 4px; justify-items: center; text-align: center;
+}
+.create-preview canvas { width: 100%; height: 260px; display: block; }
+.pv-name { font-family: var(--font-hand); font-size: 40px; font-weight: 700; line-height: 1; overflow-wrap: anywhere; }
+.pv-power { color: var(--ink-soft); font-size: 14px; }
+.create-form { display: grid; gap: 22px; min-width: 0; }
+.field { border: 0; margin: 0; padding: 0; display: grid; gap: 8px; min-width: 0; }
+.field > legend, .field > label { font-family: var(--font-hand); font-size: 30px; font-weight: 700; line-height: 1; padding: 0; margin-bottom: 8px; }
+.field legend small { font-family: var(--font-ui); font-size: 14px; font-weight: 400; color: var(--ink-soft); margin-left: 8px; }
+#in-name {
+  font-family: var(--font-hand); font-size: 30px; color: var(--ink); background: transparent;
+  border: 0; border-bottom: 2.5px solid var(--ink); padding: 2px 4px; width: min(100%, 320px);
+}
+.swatches, .chips { display: flex; flex-wrap: wrap; gap: 10px; }
+.swatch {
+  width: 38px; height: 38px; border-radius: 50%; border: 2.5px solid var(--paper); cursor: pointer;
+  background: hsl(var(--h) var(--fig-s) var(--fig-l)); box-shadow: 0 0 0 2px var(--ink-soft);
+}
+.swatch[aria-pressed="true"] { box-shadow: 0 0 0 3px var(--ink); transform: scale(1.12); }
+.chip {
+  font: 500 14px var(--font-ui); color: var(--ink); background: var(--card);
+  border: 2px solid var(--ink-soft); border-radius: 999px; padding: 6px 14px; cursor: pointer;
+}
+.chip[aria-pressed="true"] { background: var(--hi); color: var(--on-hi); border-color: var(--ink); }
+.stats { display: grid; gap: 10px; }
+.stat { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; align-items: center; gap: 10px; }
+.stat-name b { font-weight: 500; }
+.stat-name span { color: var(--ink-soft); font-size: 13px; display: block; }
+.stat button {
+  width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--ink); background: var(--card);
+  color: var(--ink); font: 700 20px/1 var(--font-ui); cursor: pointer;
+}
+.stat button:disabled { opacity: 0.3; cursor: default; }
+.pips { display: flex; gap: 4px; }
+.pip { width: 14px; height: 14px; border: 2px solid var(--ink); border-radius: 3px; }
+.pip.on { background: var(--ink); }
+.powers { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; }
+.power {
+  text-align: left; background: var(--card); color: var(--ink); cursor: pointer;
+  border: 2px solid var(--grid); border-radius: 8px; padding: 10px 12px; display: grid; gap: 2px; font: inherit;
+}
+.power:hover { border-color: var(--ink-soft); }
+.power[aria-pressed="true"] { border-color: var(--ink); box-shadow: 4px 4px 0 var(--hi); }
+.power-name { font-family: var(--font-hand); font-size: 26px; font-weight: 700; line-height: 1.05; }
+.power-cost { font-size: 12px; color: var(--ink-soft); letter-spacing: 0.04em; text-transform: uppercase; }
+.power-desc { font-size: 13px; }
+.form-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
+.form-foot p { margin: 0; color: var(--ink-soft); font-size: 13px; }
+.resume {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 12px 16px;
+  border: 2px dashed var(--margin); border-radius: 8px; background: var(--card);
+}
+.resume p { margin: 0; }
+
+/* ——— Турнир ——— */
+.cup-head h2 { font-family: var(--font-hand); font-size: 48px; line-height: 1; margin: 0; }
+.cup-head p { margin: 4px 0 0; color: var(--ink-soft); }
+.note {
+  font-family: var(--font-hand); font-size: 30px; font-weight: 700; line-height: 1.15;
+  background: linear-gradient(transparent 20%, var(--hi) 20%, var(--hi) 85%, transparent 85%);
+  color: var(--on-hi); display: inline; padding: 0 6px; box-decoration-break: clone; -webkit-box-decoration-break: clone;
+}
+.note-sub { margin: 6px 0 0; color: var(--ink-soft); }
+.cup-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 28px; align-items: start; }
+.card { background: var(--card); border: 2.5px solid var(--ink); border-radius: var(--wobbly); padding: 18px; display: grid; gap: 12px; min-width: 0; }
+.card h3 { font-family: var(--font-hand); font-size: 30px; margin: 0; line-height: 1; }
+.vs { display: grid; grid-template-columns: 1fr auto 1fr; align-items: end; gap: 8px; }
+.vs canvas { width: 100%; height: 170px; display: block; }
+.vs-word { font-family: var(--font-hand); font-size: 28px; color: var(--margin); align-self: center; }
+.vs-names { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; text-align: center; font-family: var(--font-hand); font-size: 28px; font-weight: 700; line-height: 1; }
+.opp-info { display: grid; gap: 4px; }
+.opp-info .motto { font-family: var(--font-hand); font-size: 24px; color: var(--ink-soft); }
+.opp-power b { font-weight: 500; }
+.mini-stats { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--ink-soft); }
+.mini-stats .pips { display: inline-flex; vertical-align: middle; margin-left: 4px; }
+.mini-stats .pip { width: 9px; height: 9px; border-width: 1.5px; }
+.table-wrap { overflow-x: auto; min-width: 0; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+th { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); text-align: left; padding: 6px 8px; font-weight: 500; border-bottom: 2px solid var(--ink); }
+td { padding: 7px 8px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+td.num, th.num { text-align: right; }
+tr.me td { background: linear-gradient(transparent 12%, var(--hi) 12%, var(--hi) 88%, transparent 88%); color: var(--on-hi); }
+tr.cut td { border-bottom: 2px dashed var(--margin); }
+.dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin-right: 7px; background: hsl(var(--h) calc(var(--fig-s) * var(--sat, 1)) var(--fig-l)); vertical-align: -1px; }
+tr.me .dot { box-shadow: 0 0 0 1.5px var(--on-hi); }
+.fname { font-weight: 500; }
+.table-note { font-size: 12px; color: var(--ink-soft); margin: 6px 0 0; }
+.results { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; font-size: 14px; }
+.results li b { font-weight: 500; }
+.results s { color: var(--ink-soft); text-decoration-color: var(--margin); text-decoration-thickness: 2px; }
+.soft { color: var(--ink-soft); }
+.bracket { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+.bracket .game { border: 2px solid var(--ink-soft); border-radius: 8px; padding: 8px 12px; display: grid; gap: 2px; background: var(--card); }
+.bracket .game.final { grid-column: 1 / -1; border-color: var(--ink); }
+.bracket .game small { color: var(--ink-soft); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
+.bracket .w { font-weight: 700; }
+.bracket .l { color: var(--ink-soft); text-decoration: line-through; }
+.cup-foot { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; }
+.champ canvas { width: 100%; max-width: 260px; height: 220px; display: block; margin: 0 auto; }
+
+/* ——— Бой ——— */
+.fight-stage { display: grid; gap: 10px; }
+.arena-wrap { position: relative; width: 100%; margin-inline: auto; }
+#arena { display: block; width: 100%; aspect-ratio: 16 / 9; max-width: 100%; border: 2.5px solid var(--ink); border-radius: 6px; background: var(--paper); touch-action: none; }
+.pause-menu { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 12px; background: var(--veil); border-radius: 6px; text-align: center; }
+.pause-menu p { margin: 0; font-family: var(--font-hand); font-size: 48px; font-weight: 700; }
+.pause-menu .row { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+.fight-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 20px; }
+.keys { margin: 0; color: var(--ink-soft); font-size: 13px; max-width: 80ch; }
+kbd { font: 500 12px var(--font-ui); border: 1.5px solid var(--ink-soft); border-bottom-width: 3px; border-radius: 5px; padding: 0 5px; color: var(--ink); background: var(--card); }
+.pad { display: none; justify-content: space-between; align-items: end; gap: 12px; user-select: none; -webkit-user-select: none; }
+.pad-group { display: flex; gap: 10px; }
+.pad-acts { display: grid; grid-template-columns: repeat(2, auto); gap: 10px; }
+.pad button {
+  width: 64px; height: 64px; border-radius: 50%; border: 2.5px solid var(--ink); background: var(--card);
+  color: var(--ink); font: 500 13px var(--font-ui); touch-action: none; -webkit-tap-highlight-color: transparent;
+}
+.pad button.arrow { font-size: 24px; }
+.pad button.sup { background: var(--hi); color: var(--on-hi); }
+.pad button.down { transform: scale(0.92); background: var(--ink); color: var(--paper); }
+.rotate-hint { display: none; margin: 0; color: var(--ink-soft); font-size: 13px; }
+
+@media (pointer: coarse) {
+  .pad { display: flex; }
+  .keys { display: none; }
+  body.fighting .top { display: none; }
+}
+@media (pointer: coarse) and (orientation: portrait) {
+  .rotate-hint { display: block; }
+}
+@media (pointer: coarse) and (orientation: landscape) {
+  body.fighting .sheet { padding-block: 6px; }
+  .fight-stage { position: relative; }
+  .arena-wrap { width: min(100%, calc((100dvh - 64px) * 16 / 9)); }
+  .pad { position: absolute; left: 0; right: 0; bottom: 6px; padding-inline: 6px; pointer-events: none; }
+  .pad button { pointer-events: auto; opacity: 0.78; width: 56px; height: 56px; }
+}
+@media (max-width: 520px) {
+  .col-power { display: none; }
+}
+@media (max-width: 860px) {
+  .cup-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 720px) {
+  .create { grid-template-columns: minmax(0, 1fr); }
+  .create-preview { position: static; grid-template-columns: 120px minmax(0, 1fr); text-align: left; justify-items: start; align-items: center; }
+  .create-preview canvas { height: 150px; grid-row: span 2; }
+  .top h1 { font-size: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn, .btn:hover { transition: none; transform: none; }
+}
+</style>
+
+<div class="sheet">
+  <header class="top">
+    <h1>Бой в клетку</h1>
+    <p>Турнир человечков из палочек: ты и девять соперников, у каждого своя суперсила.</p>
+  </header>
+
+  <section id="scr-create" class="screen" aria-label="Создание бойца">
+    <div class="resume" id="resume" hidden>
+      <p>Есть незаконченный турнир: <b id="resume-info"></b></p>
+      <button class="btn btn-main" id="btn-resume" type="button">Продолжить</button>
+    </div>
+    <div class="create">
+      <div class="create-preview">
+        <canvas id="pv"></canvas>
+        <div class="pv-name" id="pv-name"></div>
+        <div class="pv-power" id="pv-power"></div>
+      </div>
+      <form class="create-form" id="create-form">
+        <div class="field">
+          <label for="in-name">Имя бойца</label>
+          <input id="in-name" maxlength="14" autocomplete="off" spellcheck="false">
+        </div>
+        <fieldset class="field"><legend>Цвет</legend><div class="swatches" id="swatches"></div></fieldset>
+        <fieldset class="field"><legend>На голове</legend><div class="chips" id="accs"></div></fieldset>
+        <fieldset class="field"><legend>Характеристики <small id="pts-left"></small></legend><div class="stats" id="stats"></div></fieldset>
+        <fieldset class="field"><legend>Суперсила <small>тратит энергию, которая копится в бою</small></legend><div class="powers" id="powers"></div></fieldset>
+        <fieldset class="field"><legend>Сложность</legend><div class="chips" id="diffs"></div></fieldset>
+        <div class="form-foot">
+          <button type="submit" class="btn btn-main" id="btn-start">Начать турнир</button>
+          <p>9 туров «каждый с каждым», затем четыре лучших бойца играют полуфиналы и финал.</p>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <section id="scr-cup" class="screen" aria-label="Турнир" hidden>
+    <div class="cup-head">
+      <h2 id="cup-title"></h2>
+      <p id="cup-sub"></p>
+    </div>
+    <div id="cup-note"></div>
+    <div class="cup-grid">
+      <div id="cup-main"></div>
+      <div class="card">
+        <h3>Таблица</h3>
+        <div class="table-wrap"><table id="table"></table></div>
+        <p class="table-note">Победа — 3 очка. «±» — разница оставшегося здоровья. Четверо лучших выходят в плей-офф.</p>
+        <div id="cup-side"></div>
+      </div>
+    </div>
+    <div class="cup-foot">
+      <button class="btn-link" id="btn-restart" type="button">Бросить турнир и создать нового бойца</button>
+    </div>
+  </section>
+
+  <section id="scr-fight" class="screen" aria-label="Бой" hidden>
+    <div class="fight-stage">
+      <div class="arena-wrap">
+        <canvas id="arena"></canvas>
+        <div class="pause-menu" id="pause-menu" hidden>
+          <p>Пауза</p>
+          <div class="row">
+            <button class="btn btn-main" id="btn-continue" type="button">Продолжить</button>
+            <button class="btn" id="btn-giveup" type="button">Сдаться</button>
+          </div>
+        </div>
+      </div>
+      <div class="pad" id="pad">
+        <div class="pad-group">
+          <button class="arrow" data-act="left" aria-label="Влево">←</button>
+          <button class="arrow" data-act="jump" aria-label="Прыжок">↑</button>
+          <button class="arrow" data-act="right" aria-label="Вправо">→</button>
+        </div>
+        <div class="pad-acts">
+          <button data-act="block">Блок</button>
+          <button class="sup" data-act="sup">Супер</button>
+          <button data-act="punch">Удар</button>
+          <button data-act="kick">Пинок</button>
+        </div>
+      </div>
+    </div>
+    <div class="fight-bar">
+      <p class="keys">
+        Ходьба <kbd>A</kbd> <kbd>D</kbd> или <kbd>←</kbd> <kbd>→</kbd> · прыжок <kbd>W</kbd> / <kbd>↑</kbd> ·
+        удар <kbd>J</kbd> / <kbd>Z</kbd> · пинок <kbd>K</kbd> / <kbd>X</kbd> · блок (держать) <kbd>L</kbd> / <kbd>C</kbd> / <kbd>↓</kbd> ·
+        суперсила <kbd>Пробел</kbd> / <kbd>V</kbd> · пауза <kbd>Esc</kbd>
+      </p>
+      <p class="rotate-hint">Поверни телефон горизонтально — арена станет больше.</p>
+      <button class="btn" id="btn-pause" type="button">Пауза</button>
+    </div>
+  </section>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/draw.js"></script>
+<script src="js/fight.js"></script>
+<script src="js/match.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/cup.js"></script>
+<script src="js/ui.js"></script>
